@@ -1,16 +1,16 @@
-import com.sun.rowset.internal.Row;
-import javafx.scene.control.Cell;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Date;
 
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import sun.net.www.protocol.http.HttpURLConnection;
+
+import javax.net.ssl.HttpsURLConnection;
 
 
 /**
@@ -41,6 +41,37 @@ public class SearchWebsite {
             System.out.println("C1: " + c1Val);
             System.out.println("D1: " + d1Val);
         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        String key="AIzaSyCbi64egDqtc-Ir1qd05Jnt8DWU-_iQlHE";
+        String qry="salam";
+        URL url = null;
+        try {
+            url = new URL(
+                    "https://www.googleapis.com/customsearch/v1?key="+key+ "&cx=005119725969692011056:lmlrdefkooa&q="+ qry + "&alt=json");
+            HttpsURLConnection conn = null;
+            conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            BufferedReader br = null;
+            br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
+            String output;
+            System.out.println("Output from Server .... \n");
+            while ((output = br.readLine()) != null) {
+
+                if(output.contains("\"link\": \"")){
+                    String link=output.substring(output.indexOf("\"link\": \"")+("\"link\": \"").length(), output.indexOf("\","));
+                    System.out.println(link);       //Will print the google search links
+                }
+            }
+
+            conn.disconnect();
+
+        } catch (MalformedURLException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
