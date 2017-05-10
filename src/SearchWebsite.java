@@ -2,13 +2,12 @@
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Date;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Iterator;
 
-import org.apache.poi.xssf.usermodel.XSSFCell;
-import org.apache.poi.xssf.usermodel.XSSFRow;
-import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import sun.net.www.protocol.http.HttpURLConnection;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.*;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -20,56 +19,93 @@ public class SearchWebsite {
 
     public static void main(String[] args){
         try {
-//            File file = new File("src.");
-//            for(String fileNames : file.list()) System.out.println(fileNames);
+            File file = new File("src.");
+            for(String fileNames : file.list()) System.out.println(fileNames);
             File myFile = new File("test.xlsx");
             FileInputStream fileInputStream = new FileInputStream(myFile);
-            XSSFWorkbook workbook = new XSSFWorkbook(fileInputStream);
-            XSSFSheet worksheet = workbook.getSheetAt(0);
-            XSSFRow row1 = worksheet.getRow(0);
-            XSSFCell cellA1 = row1.getCell((short) 0);
-            String a1Val = cellA1.getStringCellValue();
-            XSSFCell cellB1 = row1.getCell((short) 1);
-            String b1Val = cellB1.getStringCellValue();
-            XSSFCell cellC1 = row1.getCell((short) 2);
-            boolean c1Val = cellC1.getBooleanCellValue();
-            XSSFCell cellD1 = row1.getCell((short) 3);
-            Date d1Val = cellD1.getDateCellValue();
+            XSSFWorkbook readingWorkbook = new XSSFWorkbook(fileInputStream);
+            XSSFSheet ReadingWorksheet = readingWorkbook.getSheetAt(0);
 
-            System.out.println("A1: " + a1Val);
-            System.out.println("B1: " + b1Val);
-            System.out.println("C1: " + c1Val);
-            System.out.println("D1: " + d1Val);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            Iterator rows = ReadingWorksheet.rowIterator();
+            String c1Val = null;
+
+            //writeIntoFile
+            FileOutputStream fileOut = new FileOutputStream("poi-test.xlsx");
+            XSSFWorkbook writingWorkbook = new XSSFWorkbook();
+            XSSFSheet writingWorksheet = writingWorkbook.createSheet("POI Worksheet");
+
+            int writingRowIndex = 0;
 
 
-        String key="AIzaSyCbi64egDqtc-Ir1qd05Jnt8DWU-_iQlHE";
-        String qry="salam";
-        URL url = null;
-        try {
-            url = new URL(
-                    "https://www.googleapis.com/customsearch/v1?key="+key+ "&cx=005119725969692011056:lmlrdefkooa&q="+ qry + "&alt=json");
-            HttpsURLConnection conn = null;
-            conn = (HttpsURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Accept", "application/json");
-            BufferedReader br = null;
-            br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
-            String output;
-            System.out.println("Output from Server .... \n");
-            while ((output = br.readLine()) != null) {
+            while(rows.hasNext()) {
+                XSSFRow row = (XSSFRow) rows.next();
+                XSSFCell cellC1 = row.getCell((short) 3);
+                c1Val = cellC1.getStringCellValue();
+                System.out.println("C1: " + c1Val);
 
-                if(output.contains("\"link\": \"")){
-                    String link=output.substring(output.indexOf("\"link\": \"")+("\"link\": \"").length(), output.indexOf("\","));
-                    System.out.println(link);       //Will print the google search links
+
+
+                //************************************************************************
+                String key = "AIzaSyCbi64egDqtc-Ir1qd05Jnt8DWU-_iQlHE";
+                String qry = URLEncoder.encode(c1Val + " -filetype:pdf", "UTF-8");
+                URL url = null;
+
+                url = new URL(
+                        "https://www.googleapis.com/customsearch/v1?key=" + key + "&cx=005119725969692011056:lmlrdefkooa&q=" + qry + "&alt=json");
+
+                System.out.println(url);
+                HttpsURLConnection connection = null;
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("Accept", "application/json");
+                connection.setDoInput(true);
+                connection.setDoOutput(true);
+                BufferedReader br = null;
+                br = new BufferedReader(new InputStreamReader((connection.getInputStream())));
+                String output;
+                System.out.println("Output from Server .... \n");
+                ArrayList<String> profileNameResults = new ArrayList<>();
+                while ((output = br.readLine()) != null) {
+
+
+                    if (output.contains("\"link\": \"")) {
+                        String link = output.substring(output.indexOf("\"link\": \"") + ("\"link\": \"").length(), output.indexOf("\","));
+                        System.out.println(link);       //Will print the google search links
+                        profileNameResults.add(link);
+                        break;
+                    }
+                }
+
+                connection.disconnect();
+                //**************************************************************************
+
+
+                //writing to an excel file
+                Row WritingRow = writingWorksheet.createRow(writingRowIndex++);
+
+                XSSFCell cellA1 = (XSSFCell) WritingRow.createCell(0);
+                cellA1.setCellValue(c1Val);
+                XSSFCellStyle cellStyle = writingWorkbook.createCellStyle();
+                cellA1.setCellStyle(cellStyle);
+
+                int writingCellIndex = 1;
+                int j = 0;
+                for(String s:profileNameResults){
+                    if(j<5) {
+                        XSSFCell cellB1 = (XSSFCell) WritingRow.createCell(writingCellIndex++);
+                        cellB1.setCellValue(s);
+                        cellStyle = writingWorkbook.createCellStyle();
+                        cellB1.setCellStyle(cellStyle);
+                        j++;
+                    }else{
+                        break;
+                    }
                 }
             }
 
-            conn.disconnect();
+            writingWorkbook.write(fileOut);
+            fileOut.flush();
+            fileOut.close();
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -78,5 +114,6 @@ public class SearchWebsite {
         }
 
     }
+
 
 }
